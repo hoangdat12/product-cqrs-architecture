@@ -1,7 +1,9 @@
 import amqp from 'amqplib';
-import { InternalServerError } from '../core/error.response';
+import { BadRequest, InternalServerError } from '../core/error.response';
 import ProductFactory from './product.service';
 import { IMessage } from '../ultil/interface/message.interface';
+import { createProduct } from '../dbs/init.elastic';
+import { getProductMappingData } from '../ultil/get-product-mapping';
 
 const connectToRabbitMq = async () => {
   try {
@@ -48,14 +50,34 @@ const consumerQueue = async () => {
     console.log(`Waiting for messages from ${queueName}...`);
     channel.consume(
       queueName,
-      (msg) => {
+      async (msg) => {
         if (msg) {
-          const msgContent = JSON.parse(msg.content.toString()) as IMessage;
-          console.log(msgContent);
-          ProductFactory.createProduct(
-            msgContent.payload.product_type,
-            msgContent.payload
-          );
+          // parse Message
+          const message = JSON.parse(msg.content.toString()) as IMessage;
+          const { messageType, payload } = message;
+
+          switch (messageType) {
+            case 'Create':
+              const elsData = getProductMappingData(message);
+              createProduct(elsData);
+              await ProductFactory.createProductV2(
+                message.payload.product_type,
+                payload
+              );
+              break;
+            case 'Update':
+              return await ProductFactory.updateProductV2(
+                message.payload.product_type,
+                payload
+              );
+            case 'Delete':
+              return await ProductFactory.deleteProductV2(
+                message.payload.product_type,
+                payload._id
+              );
+            default:
+              throw new BadRequest('Message type not found!');
+          }
         }
       },
       {
@@ -66,6 +88,12 @@ const consumerQueue = async () => {
     throw error;
   }
 };
+
+// export const consumerFactory = {
+//   Create: ProductFactory.createProduct,
+//   Update: ProductFactory.updateProduct,
+//   Delete: ProductFactory.deleteProduct,
+// }
 
 export const RabbitMqService = {
   connectToRabbitMq,

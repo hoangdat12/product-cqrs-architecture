@@ -4,12 +4,15 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  BeforeInsert,
+  PrimaryColumn,
 } from 'typeorm';
 import { TABLE_PRODUCT_NAME } from '../constant/db.constant';
+import ObjectID from 'bson-objectid';
 
 @Entity(TABLE_PRODUCT_NAME)
 export class Product {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'varchar', length: 50, nullable: false, unique: true })
   id: string;
 
   @Column({ type: 'varchar', length: 255, nullable: false })
@@ -56,4 +59,11 @@ export class Product {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @BeforeInsert()
+  generateUUID() {
+    if (!this.id) {
+      this.id = ObjectID().toHexString();
+    }
+  }
 }

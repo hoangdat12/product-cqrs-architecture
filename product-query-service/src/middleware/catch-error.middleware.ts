@@ -6,7 +6,7 @@ export const catchError = (
   res: Response,
   next: NextFunction
 ) => {
-  console.log(res);
+  console.log(err);
   const statusCode = err.status || 500;
   return res.status(statusCode).json({
     status: 'Error',

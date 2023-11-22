@@ -3,6 +3,6 @@ import { IProduct } from './create-product.interface';
 export interface IMessage {
   messageType: 'Create' | 'Update' | 'Delete';
   payload: IProduct;
-  timestamp: string | Date;
+  timestamp: string;
   correlationId: string;
 }

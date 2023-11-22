@@ -27,7 +27,10 @@ export class ProductService {
     // Sync data for Query Server
     const message: IMessage = {
       messageType: 'Create',
-      payload,
+      payload: {
+        ...payload,
+        _id: newProduct.id,
+      },
       timestamp: newProduct.createdAt,
       correlationId: randomUUID(),
     };

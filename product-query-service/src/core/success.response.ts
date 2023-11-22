@@ -17,7 +17,7 @@ class SuccessResponse {
 
 class OK extends SuccessResponse {
   private options: {};
-  constructor(metadata = {}, message = 'Ok', options = {}) {
+  constructor(metadata: any = {}, message = 'Ok', options = {}) {
     super(message, metadata);
     this.options = options;
   }

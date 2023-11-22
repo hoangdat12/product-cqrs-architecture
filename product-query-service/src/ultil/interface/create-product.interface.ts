@@ -1,4 +1,5 @@
 export class IProduct {
+  _id: string;
   product_name: string;
   product_thumb: string;
   product_description: string;
