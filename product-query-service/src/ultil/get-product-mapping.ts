@@ -13,7 +13,7 @@ export const getProductMappingData = (data: IMessage): IProductMapping => {
     product_ratingAverage: 4.5,
     isDraft: true,
     isPublished: false,
-    product_images: payload.imageNames,
+    product_images: payload.product_images,
     createdAt: new Date(data.timestamp),
     updatedAt: new Date(data.timestamp),
   };

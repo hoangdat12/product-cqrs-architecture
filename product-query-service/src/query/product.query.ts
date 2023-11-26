@@ -3,6 +3,7 @@ import { OK } from '../core/success.response';
 import ProductFactory from '../service/product.service';
 import { getPaginationData } from '../ultil/get-pagination';
 import { IProduct } from '../ultil/interface/create-product.interface';
+import { ElasticsearchService } from '../service/els.service';
 
 export class ProductQuery {
   static async getProduct(req: Request, res: Response, next: NextFunction) {
@@ -58,28 +59,12 @@ export class ProductQuery {
 
   static async searchProduct(req: Request, res: Response, next: NextFunction) {
     try {
-      const { s: keyword } = req.query;
+      const keyword: string = req.query.s as unknown as string;
       const pagination = getPaginationData(req.query);
-      //   return new OK(await ProductFactory.searchProduct(keyword?.trim(), pagination))
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Test
-  static async createProduct(req: Request, res: Response, next: NextFunction) {
-    try {
-      const bodyData = req.body as IProduct;
+      if (!keyword) return new OK([]);
       return new OK(
-        await ProductFactory.createProductV2(bodyData.product_type, bodyData)
+        await ElasticsearchService.searchProduct(keyword, pagination)
       ).send(res);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async updateProduct(req: Request, res: Response, next: NextFunction) {
-    try {
     } catch (error) {
       next(error);
     }

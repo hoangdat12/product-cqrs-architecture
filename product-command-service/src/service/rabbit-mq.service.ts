@@ -38,19 +38,43 @@ async function publishMessageForSyncData(message: any) {
   try {
     const queueName = process.env.RABBITMQ_SYNC_QUEUE;
     const exchangeName = process.env.RABBITMQ_EXCHANGE_NAME;
-    if (!queueName || !exchangeName) throw new Error('Queue name not found!');
+    const exchangeType = process.env.RABBITMQ_EXCHANGE_TYPE;
+    const routingKeyDlx = process.env.RABBITMQ_ROUTING_QUEUE_DLX;
+    const exchangeNameDlx = process.env.RABBITMQ_EXCHANGE_NAME_DLX;
+
+    if (
+      !queueName ||
+      !exchangeName ||
+      !exchangeType ||
+      !routingKeyDlx ||
+      !exchangeNameDlx
+    )
+      throw new Error('Queue name not found!');
+
     // Connect to RabbitMQ server
     const { conn, channel } = await connectToRabbitMq();
 
     // Declare exchange
-    await channel.assertExchange(exchangeName, 'direct', { durable: false });
+    await channel.assertExchange(exchangeName, exchangeType, { durable: true });
 
-    // await channel.assertQueue(queueName, {
-    //   durable: true,
-    // });
+    // Declare queue with dead-letter configuration
+    const queueResult = await channel.assertQueue(queueName, {
+      exclusive: false,
+      deadLetterExchange: exchangeNameDlx,
+      deadLetterRoutingKey: routingKeyDlx,
+    });
 
-    // Publish the message to the 'example_queue'
-    channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)));
+    // Bind the queue to the exchange
+    await channel.bindQueue(queueResult.queue, exchangeName, routingKeyDlx);
+
+    // Publish the message to the queue
+    channel.sendToQueue(
+      queueResult.queue,
+      Buffer.from(JSON.stringify(message)),
+      {
+        expiration: '10000',
+      }
+    );
 
     // Close the connection
     await channel.close();

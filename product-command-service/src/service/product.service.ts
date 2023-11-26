@@ -23,8 +23,7 @@ export class ProductService {
     if (foundProduct) throw new BadRequest('Product is exist in Shop!');
 
     const newProduct = await ProductHandler.create(payload);
-
-    // Sync data for Query Server
+    // Sync d = aata for Query Server
     const message: IMessage = {
       messageType: 'Create',
       payload: {

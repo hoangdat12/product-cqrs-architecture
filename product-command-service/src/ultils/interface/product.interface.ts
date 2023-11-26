@@ -16,7 +16,7 @@ export class IProduct {
 
   product_attributes: any;
 
-  imageNames: string[];
+  product_images: string[];
 
   _id: string | undefined;
 }

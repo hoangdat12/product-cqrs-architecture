@@ -1,102 +1,80 @@
-import amqp from 'amqplib';
 import { BadRequest, InternalServerError } from '../core/error.response';
 import ProductFactory from './product.service';
 import { IMessage } from '../ultil/interface/message.interface';
-import { createProduct } from '../dbs/init.elastic';
 import { getProductMappingData } from '../ultil/get-product-mapping';
+import { ElasticsearchService } from './els.service';
+import { connectToRabbitMq } from '../dbs/init.rabbitmq';
 
-const connectToRabbitMq = async () => {
-  try {
-    // const connUrl = `amqp://${process.env.RABBITMQ_USERNAME}
-    //     :${process.env.RABBITMQ_PASSWORD}
-    //     @${process.env.RABBITMQ_HOST}:5672/`;
-    const connUrl = `amqp://${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`;
-
-    const conn = await amqp.connect(connUrl);
-    if (!conn) throw new Error('Connection not Established!');
-
-    const channel = await conn.createChannel();
-    return { conn, channel };
-  } catch (error) {
-    throw error;
-  }
-};
-
-const connectToRabbitMqForTest = async () => {
-  try {
-    const { conn, channel } = await connectToRabbitMq();
-
-    // Publish message to a queue
-    const queue = 'test-queue';
-    const message = 'Test established for RabbitMq successfully!';
-    await channel.assertQueue(queue);
-    channel.sendToQueue(queue, Buffer.from(message));
-
-    // close the connection
-    await conn.close();
-  } catch (error) {
-    throw error;
-  }
-};
-
+// For Product
 const consumerQueue = async () => {
   try {
     const queueName = process.env.RABBITMQ_SYNC_QUEUE;
     if (!queueName) throw new InternalServerError('Queue not found!');
     const { channel } = await connectToRabbitMq();
 
-    await channel.assertQueue(queueName, { durable: false });
+    await channel.prefetch(10);
+
+    await channel.assertQueue(queueName, {
+      durable: false,
+    });
 
     console.log(`Waiting for messages from ${queueName}...`);
-    channel.consume(
-      queueName,
-      async (msg) => {
-        if (msg) {
+    channel.consume(queueName, async (msg) => {
+      if (msg) {
+        try {
           // parse Message
           const message = JSON.parse(msg.content.toString()) as IMessage;
+
+          console.log('Receiving message to Sync Data:::: ', message);
+
           const { messageType, payload } = message;
+          const productType = message.payload.product_type;
+          const elsData = getProductMappingData(message);
 
           switch (messageType) {
             case 'Create':
-              const elsData = getProductMappingData(message);
-              createProduct(elsData);
-              await ProductFactory.createProductV2(
-                message.payload.product_type,
+              const elsCreateP = ElasticsearchService.createProduct(elsData);
+              const productCreateP = ProductFactory.createProductV2(
+                productType,
                 payload
               );
+              await Promise.all([elsCreateP, productCreateP]);
               break;
             case 'Update':
-              return await ProductFactory.updateProductV2(
-                message.payload.product_type,
+              const elsUpdateP = ElasticsearchService.updateProduct(elsData);
+              const productUpdateP = ProductFactory.updateProductV2(
+                productType,
                 payload
               );
+              await Promise.all([elsUpdateP, productUpdateP]);
+              break;
             case 'Delete':
-              return await ProductFactory.deleteProductV2(
-                message.payload.product_type,
+              const elsDeleteP = ElasticsearchService.deleteProduct(
                 payload._id
               );
+              const productDeleteP = ProductFactory.deleteProductV2(
+                productType,
+                payload._id
+              );
+              await Promise.all([elsDeleteP, productDeleteP]);
+              break;
             default:
               throw new BadRequest('Message type not found!');
           }
+
+          // acknowlegment
+          channel.ack(msg);
+        } catch (error) {
+          // Mark the message as fail process, need to move DLX
+          channel.nack(msg, false, false);
         }
-      },
-      {
-        noAck: true,
       }
-    );
+    });
   } catch (error) {
     throw error;
   }
 };
 
-// export const consumerFactory = {
-//   Create: ProductFactory.createProduct,
-//   Update: ProductFactory.updateProduct,
-//   Delete: ProductFactory.deleteProduct,
-// }
-
 export const RabbitMqService = {
-  connectToRabbitMq,
-  connectToRabbitMqForTest,
   consumerQueue,
 };

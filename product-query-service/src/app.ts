@@ -15,7 +15,6 @@ app.use(express.urlencoded({ extended: true }));
 
 RabbitMqService.consumerQueue();
 Mongodb.getInstance();
-
 app.use('/product/query', productRoute);
 
 // TEST

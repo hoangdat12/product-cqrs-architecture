@@ -35,7 +35,7 @@ export class ProductHandler {
     newProduct.product_attributes = JSON.stringify(payload.product_attributes);
     newProduct.product_thumb = payload.product_thumb;
     newProduct.product_shop = payload.product_shop;
-    newProduct.product_images = payload.imageNames;
+    newProduct.product_images = payload.product_images;
 
     return await productRepository.save(newProduct);
   }

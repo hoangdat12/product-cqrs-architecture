@@ -37,7 +37,6 @@ class ProductFactory {
     // createdAt: string
   ) {
     const modelType = this.modelRegister[type];
-    console.log(modelType, this.modelRegister);
     if (!modelType) throw new BadRequest('Type not found!');
 
     const productP = _Product.create({
@@ -91,8 +90,6 @@ class ProductFactory {
       page,
     });
   }
-
-  static async searchProduct(keyword: string, pagination: IPagination) {}
 
   // static async updateProduct(type: string, payload: IProduct) {
   //   const productClass = this.productRegister[type];
